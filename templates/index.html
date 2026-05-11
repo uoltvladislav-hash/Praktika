@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+    <title>Конвертер валют</title>
+    <meta name="description" content="Конвертер валют с историей курсов и визуализацией">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <a href="/" class="logo">
+                <i class="fas fa-exchange-alt logo-icon"></i>
+                <span class="logo-text">CurrencyExchange</span>
+            </a>
+            <nav class="nav">
+                <a href="#converter" class="nav-link active">Конвертер</a>
+                <a href="#history" class="nav-link">История</a>
+            </nav>
+            <button class="theme-toggle" id="themeToggle" title="Переключить тему">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main" id="converter">
+        <div class="container">
+            <!-- Hero Section -->
+            <div class="hero">
+                <h1 class="hero-title">
+                    Конвертировать валюту
+                </h1>
+                <p class="hero-description">
+                    Мгновенная конвертация по актуальным курсам
+                </p>
+            </div>
+
+            <!-- Converter Card -->
+            <div class="card converter-card">
+                <form method="post" action="/convert" class="converter-form">
+                    <!-- Сумма -->
+                    <div class="form-group-full">
+                        <label class="form-label">Сумма</label>
+                        <div class="amount-input-wrapper">
+                            <span class="currency-symbol">₽</span>
+                            <input 
+                                type="number" 
+                                id="amount"
+                                name="amount" 
+                                step="0.01" 
+                                min="0.01" 
+                                placeholder="0.00"
+                                value="{{ result.amount if result else '' }}"
+                                required
+                                class="amount-input"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Выбор валют -->
+                    <div class="currency-selectors">
+                        <div class="form-group">
+                            <label class="form-label">Из валюты</label>
+                            <select name="from_currency" class="currency-select" id="fromCurrency" required>
+                                {% for c in currencies %}
+                                <option value="{{ c.code }}" 
+                                    {% if result and result.from_code == c.code %}selected{% endif %}>
+                                    {{ c.sign }} {{ c.code }} — {{ c.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <button type="button" class="swap-btn" id="swapBtn" title="Поменять местами">
+                            <i class="fas fa-exchange-alt"></i>
+                        </button>
+
+                        <div class="form-group">
+                            <label class="form-label">В валюту</label>
+                            <select name="to_currency" class="currency-select" id="toCurrency" required>
+                                {% for c in currencies %}
+                                <option value="{{ c.code }}"
+                                    {% if result and result.to_code == c.code %}selected{% endif %}>
+                                    {{ c.sign }} {{ c.code }} — {{ c.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Кнопка -->
+                    <button type="submit" class="btn-convert">
+                        <i class="fas fa-sync-alt"></i>
+                        Конвертировать
+                    </button>
+                </form>
+
+                <!-- Ошибка -->
+                {% if error %}
+                <div class="alert alert-error">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>{{ error }}</span>
+                </div>
+                {% endif %}
+
+                <!-- Результат -->
+                {% if result %}
+                <div class="result-section">
+                    <div class="result-card">
+                        <div class="result-amount-main">
+                            <span class="result-value">{{ result.amount }}</span>
+                            <span class="result-currency-badge">{{ result.from_code }}</span>
+                        </div>
+                        <div class="result-divider">
+                            <i class="fas fa-equals"></i>
+                        </div>
+                        <div class="result-amount-main">
+                            <span class="result-value converted">{{ result.converted }}</span>
+                            <span class="result-currency-badge target">{{ result.to_code }}</span>
+                        </div>
+                    </div>
+                    <p class="result-rate-text">
+                        Курс: 1 {{ result.from_code }} = {{ result.rate }} {{ result.to_code }}
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- История -->
+            {% if history %}
+            <div class="history-section" id="history">
+                <h2 class="section-title">
+                    <i class="fas fa-history"></i>
+                    История конвертаций
+                </h2>
+                <div class="card history-card">
+                    <div class="table-wrapper">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Дата и время</th>
+                                    <th>Из</th>
+                                    <th>В</th>
+                                    <th>Сумма</th>
+                                    <th>Результат</th>
+                                    <th>Курс</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in history %}
+                                <tr>
+                                    <td class="date-cell">{{ row.date }}</td>
+                                    <td><span class="currency-tag">{{ row.from_code }}</span></td>
+                                    <td><span class="currency-tag">{{ row.to_code }}</span></td>
+                                    <td class="amount-cell">{{ row.amount }}</td>
+                                    <td class="amount-cell result">{{ row.result }}</td>
+                                    <td class="rate-cell">{{ row.rate }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 CurrencyExchange · Практика · Лысодед В.В и Бадеев В.Р</p>
+        </div>
+    </footer>
+
+    <!-- Скрипт для кнопки обмена валют -->
+    <script>
+        document.getElementById('swapBtn').addEventListener('click', function() {
+            const from = document.getElementById('fromCurrency');
+            const to = document.getElementById('toCurrency');
+            const temp = from.value;
+            from.value = to.value;
+            to.value = temp;
+        });
+
+        // Переключение темы
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark');
+            const icon = themeToggle.querySelector('i');
+            if (document.body.classList.contains('dark')) {
+                icon.className = 'fas fa-sun';
+            } else {
+                icon.className = 'fas fa-moon';
+            }
+        });
+    </script>
+</body>
+</html>
