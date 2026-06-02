@@ -14,6 +14,8 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 import uvicorn
+import requests
+import xml.etree.ElementTree as ET
 
 # ============= НАСТРОЙКА ПРИЛОЖЕНИЯ =============
 app = FastAPI(title="💱 Конвертер валют", version="1.0.0")
@@ -93,27 +95,94 @@ def init_database():
             currencies
         )
 
-        # Добавляем курсы относительно RUB
-        rates = [
-            ("RUB", "USD", 0.011),
-            ("RUB", "EUR", 0.010),
-            ("RUB", "GBP", 0.0086),
-            ("RUB", "CNY", 0.079),
-            ("RUB", "JPY", 1.72),
-            ("RUB", "KZT", 4.95),
-            ("RUB", "TRY", 0.35),
-        ]
-        cur.executemany(
-            "INSERT INTO exchange_rates (base_code, target_code, rate) VALUES (?, ?, ?)",
-            rates
-        )
-
     conn.commit()
     conn.close()
 
 
 # Инициализируем БД при запуске
 init_database()
+
+
+# ============= ЗАГРУЗКА КУРСОВ С ЦБ РФ =============
+
+def update_rates_from_cbr():
+    """
+    Загружает актуальные курсы валют с API Центробанка РФ.
+    ЦБ РФ возвращает курс: сколько рублей стоит 1 единица валюты.
+    Например: 1 USD = 91.45 RUB, 1 EUR = 99.80 RUB.
+    Мы сохраняем ОБРАТНЫЙ курс: RUB -> USD = 1/91.45 (сколько USD в 1 RUB).
+    """
+    try:
+        url = "https://www.cbr.ru/scripts/XML_daily.asp"
+        response = requests.get(url, timeout=5)
+        response.encoding = 'windows-1251'
+        
+        root = ET.fromstring(response.text)
+        
+        conn = get_db()
+        cur = conn.cursor()
+        
+        for valute in root.findall("Valute"):
+            char_code = valute.find("CharCode").text
+            
+            # Загружаем только нужные нам валюты
+            if char_code not in ["USD", "EUR", "GBP", "CNY", "JPY", "KZT", "TRY"]:
+                continue
+            
+            # ЦБ использует запятую в числах: "91,4534"
+            # и может быть номинал (например, 10 турецких лир)
+            value = float(valute.find("Value").text.replace(",", "."))
+            nominal = int(valute.find("Nominal").text)
+            
+            # Курс: сколько RUB за 1 единицу валюты
+            rub_per_unit = value / nominal
+            
+            # Нам нужен обратный курс: сколько единиц валюты в 1 RUB
+            rate = 1.0 / rub_per_unit
+            
+            # Сохраняем: RUB -> КОД = курс
+            cur.execute(
+                "INSERT OR REPLACE INTO exchange_rates (base_code, target_code, rate) VALUES (?, ?, ?)",
+                ("RUB", char_code, rate)
+            )
+        
+        conn.commit()
+        conn.close()
+        print("✅ Курсы валют обновлены с ЦБ РФ")
+        
+    except Exception as e:
+        print(f"⚠️ Не удалось загрузить курсы с ЦБ: {e}")
+        print("📌 Использую резервные курсы")
+        _load_fallback_rates()
+
+
+def _load_fallback_rates():
+    """Резервные курсы на случай недоступности API ЦБ (сколько валюты в 1 RUB)"""
+    conn = get_db()
+    cur = conn.cursor()
+    
+    fallback = [
+        ("RUB", "USD", 0.0109),   # 1 RUB = 0.0109 USD
+        ("RUB", "EUR", 0.0100),   # 1 RUB = 0.0100 EUR
+        ("RUB", "GBP", 0.0085),   # 1 RUB = 0.0085 GBP
+        ("RUB", "CNY", 0.079),    # 1 RUB = 0.079 CNY
+        ("RUB", "JPY", 1.64),     # 1 RUB = 1.64 JPY
+        ("RUB", "KZT", 5.00),     # 1 RUB = 5.00 KZT
+        ("RUB", "TRY", 0.35),     # 1 RUB = 0.35 TRY
+    ]
+    
+    for base, target, rate in fallback:
+        cur.execute(
+            "INSERT OR REPLACE INTO exchange_rates (base_code, target_code, rate) VALUES (?, ?, ?)",
+            (base, target, rate)
+        )
+    
+    conn.commit()
+    conn.close()
+
+
+# Загружаем курсы при старте
+update_rates_from_cbr()
 
 
 # ============= ФУНКЦИИ ДЛЯ РАБОТЫ С ВАЛЮТАМИ =============
