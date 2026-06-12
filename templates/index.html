@@ -8,197 +8,321 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 32px; max-width: 460px; width: 90%; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3); }
+        .dark .modal-card { background: #1e293b; border-color: #334155; color: #f1f5f9; }
+        .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        .modal-header h3 { font-size: 20px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 10px; }
+        .dark .modal-header h3 { color: #f1f5f9; }
+        .modal-close { width: 36px; height: 36px; border-radius: 50%; border: 1px solid #e2e8f0; background: #f8fafc; color: #64748b; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
+        .dark .modal-close { background: #1e293b; border-color: #334155; color: #94a3b8; }
+        .modal-close:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
+        .modal-body p { color: #64748b; margin-bottom: 10px; line-height: 1.6; }
+        .dark .modal-body p { color: #94a3b8; }
+        .modal-body strong { color: #0f172a; }
+        .dark .modal-body strong { color: #f1f5f9; }
+        .modal-body hr { border: none; border-top: 1px solid #e2e8f0; margin: 16px 0; }
+        .dark .modal-body hr { border-top-color: #334155; }
+        .modal-link { font-size: 13px; color: #6366f1 !important; word-break: break-all; }
+        .modal-note { font-size: 13px; color: #94a3b8 !important; }
+    </style>
 </head>
 <body>
-    <!-- Header -->
     <header class="header">
         <div class="container">
-            <a href="/" class="logo">
-                <i class="fas fa-exchange-alt logo-icon"></i>
-                <span class="logo-text">CurrencyExchange</span>
-            </a>
+            <a href="/" class="logo"><i class="fas fa-exchange-alt logo-icon"></i><span class="logo-text">CurrencyExchange</span></a>
             <nav class="nav">
                 <a href="#converter" class="nav-link active">Конвертер</a>
                 <a href="#history" class="nav-link">История</a>
+                <a href="#charts" class="nav-link">Графики</a>
             </nav>
-            <button class="theme-toggle" id="themeToggle" title="Переключить тему">
-                <i class="fas fa-moon"></i>
-            </button>
+            <div class="header-actions">
+                <button class="theme-toggle" id="infoBtn" title="О проекте">?</button>
+                <button class="theme-toggle" id="themeToggle" title="Переключить тему"><i class="fas fa-moon"></i></button>
+            </div>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="main" id="converter">
-        <div class="container">
-            <!-- Hero Section -->
-            <div class="hero">
-                <h1 class="hero-title">
-                    Конвертировать валюту
-                </h1>
-                <p class="hero-description">
-                    Мгновенная конвертация по актуальным курсам
-                </p>
+    <div class="modal-overlay" id="infoModal">
+        <div class="modal-card">
+            <div class="modal-header"><h3><i class="fas fa-info-circle"></i> О проекте</h3><button class="modal-close" id="closeModal">&times;</button></div>
+            <div class="modal-body">
+                <p><strong>Практическую работу выполнили:</strong></p>
+                <p>Лысодед В.В.</p><p>Бадеев В.Р.</p><hr>
+                <p><strong>Курсы валют:</strong></p><p>API Центрального банка РФ</p>
+                <p class="modal-link">cbr.ru/scripts/XML_daily.asp</p>
+                <p class="modal-note">Курсы обновляются при каждом запуске сервера</p><hr>
+                <p class="modal-note">Python + FastAPI | SQLite | HTML + CSS</p>
             </div>
+        </div>
+    </div>
 
-            <!-- Converter Card -->
-            <div class="card converter-card">
-                <form method="post" action="/convert" class="converter-form">
-                    <!-- Сумма -->
-                    <div class="form-group-full">
-                        <label class="form-label">Сумма</label>
-                        <div class="amount-input-wrapper">
-                            <span class="currency-symbol">₽</span>
-                            <input 
-                                type="number" 
-                                id="amount"
-                                name="amount" 
-                                step="0.01" 
-                                min="0.01" 
-                                placeholder="0.00"
-                                value="{{ result.amount if result else '' }}"
-                                required
-                                class="amount-input"
-                            >
-                        </div>
-                    </div>
-
-                    <!-- Выбор валют -->
-                    <div class="currency-selectors">
-                        <div class="form-group">
-                            <label class="form-label">Из валюты</label>
-                            <select name="from_currency" class="currency-select" id="fromCurrency" required>
-                                {% for c in currencies %}
-                                <option value="{{ c.code }}" 
-                                    {% if result and result.from_code == c.code %}selected{% endif %}>
-                                    {{ c.sign }} {{ c.code }} — {{ c.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <button type="button" class="swap-btn" id="swapBtn" title="Поменять местами">
-                            <i class="fas fa-exchange-alt"></i>
-                        </button>
-
-                        <div class="form-group">
-                            <label class="form-label">В валюту</label>
-                            <select name="to_currency" class="currency-select" id="toCurrency" required>
-                                {% for c in currencies %}
-                                <option value="{{ c.code }}"
-                                    {% if result and result.to_code == c.code %}selected{% endif %}>
-                                    {{ c.sign }} {{ c.code }} — {{ c.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Кнопка -->
-                    <button type="submit" class="btn-convert">
-                        <i class="fas fa-sync-alt"></i>
-                        Конвертировать
-                    </button>
-                </form>
-
-                <!-- Ошибка -->
-                {% if error %}
-                <div class="alert alert-error">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span>{{ error }}</span>
+    <main class="main">
+        <div id="converter" class="section">
+            <div class="container">
+                <div class="hero">
+                    <h1 class="hero-title">Конвертировать валюту</h1>
+                    <p class="hero-description">Мгновенная конвертация по актуальным курсам</p>
                 </div>
-                {% endif %}
-
-                <!-- Результат -->
-                {% if result %}
-                <div class="result-section">
-                    <div class="result-card">
-                        <div class="result-amount-main">
-                            <span class="result-value">{{ result.amount }}</span>
-                            <span class="result-currency-badge">{{ result.from_code }}</span>
+                <div class="card converter-card">
+                    <form method="post" action="/convert" class="converter-form">
+                        <div class="form-group-full">
+                            <label class="form-label">Сумма</label>
+                            <div class="amount-input-wrapper"><span class="currency-symbol">₽</span><input type="number" id="amount" name="amount" step="0.01" min="0.01" placeholder="0.00" value="{{ result.amount if result else '' }}" required class="amount-input"></div>
                         </div>
-                        <div class="result-divider">
-                            <i class="fas fa-equals"></i>
+                        <div class="currency-selectors">
+                            <div class="form-group">
+                                <label class="form-label">Из валюты</label>
+                                <select name="from_currency" class="currency-select" id="fromCurrency" required>
+                                    {% for c in currencies %}<option value="{{ c.code }}" {% if result and result.from_code == c.code %}selected{% endif %}>{{ c.sign }} {{ c.code }} — {{ c.name }}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <button type="button" class="swap-btn" id="swapBtn" title="Поменять местами"><i class="fas fa-exchange-alt"></i></button>
+                            <div class="form-group">
+                                <label class="form-label">В валюту</label>
+                                <select name="to_currency" class="currency-select" id="toCurrency" required>
+                                    {% for c in currencies %}<option value="{{ c.code }}" {% if result and result.to_code == c.code %}selected{% endif %}>{{ c.sign }} {{ c.code }} — {{ c.name }}</option>{% endfor %}
+                                </select>
+                            </div>
                         </div>
-                        <div class="result-amount-main">
-                            <span class="result-value converted">{{ result.converted }}</span>
-                            <span class="result-currency-badge target">{{ result.to_code }}</span>
+                        <button type="submit" class="btn-convert"><i class="fas fa-sync-alt"></i> Конвертировать</button>
+                    </form>
+                    {% if error %}<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>{% endif %}
+                    {% if result %}
+                    <div class="result-section">
+                        <div class="result-card">
+                            <div class="result-amount-main"><span class="result-value">{{ result.amount }}</span><span class="result-currency-badge">{{ result.from_code }}</span></div>
+                            <div class="result-divider"><i class="fas fa-equals"></i></div>
+                            <div class="result-amount-main"><span class="result-value converted">{{ result.converted }}</span><span class="result-currency-badge target">{{ result.to_code }}</span></div>
                         </div>
+                        <p class="result-rate-text">Курс: 1 {{ result.from_code }} = {{ result.rate }} {{ result.to_code }}</p>
+                        <a href="#charts" class="history-link" data-currency="{{ result.to_code }}">
+                            <i class="fas fa-chart-line"></i> Посмотреть историю курса {{ result.to_code }}
+                        </a>
                     </div>
-                    <p class="result-rate-text">
-                        Курс: 1 {{ result.from_code }} = {{ result.rate }} {{ result.to_code }}
-                    </p>
+                    {% endif %}
                 </div>
-                {% endif %}
             </div>
+        </div>
 
-            <!-- История -->
-            {% if history %}
-            <div class="history-section" id="history">
-                <h2 class="section-title">
-                    <i class="fas fa-history"></i>
-                    История конвертаций
-                </h2>
+        {% if history %}
+        <div id="history" class="section">
+            <div class="container">
+                <h2 class="section-title"><i class="fas fa-history"></i> История конвертаций</h2>
                 <div class="card history-card">
                     <div class="table-wrapper">
                         <table class="history-table">
-                            <thead>
-                                <tr>
-                                    <th>Дата и время</th>
-                                    <th>Из</th>
-                                    <th>В</th>
-                                    <th>Сумма</th>
-                                    <th>Результат</th>
-                                    <th>Курс</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for row in history %}
-                                <tr>
-                                    <td class="date-cell">{{ row.date }}</td>
-                                    <td><span class="currency-tag">{{ row.from_code }}</span></td>
-                                    <td><span class="currency-tag">{{ row.to_code }}</span></td>
-                                    <td class="amount-cell">{{ row.amount }}</td>
-                                    <td class="amount-cell result">{{ row.result }}</td>
-                                    <td class="rate-cell">{{ row.rate }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
+                            <thead><tr><th>Дата и время</th><th>Из</th><th>В</th><th>Сумма</th><th>Результат</th><th>Курс</th></tr></thead>
+                            <tbody>{% for row in history %}<tr><td class="date-cell">{{ row.date }}</td><td><span class="currency-tag">{{ row.from_code }}</span></td><td><span class="currency-tag">{{ row.to_code }}</span></td><td class="amount-cell">{{ row.amount }}</td><td class="amount-cell result">{{ row.result }}</td><td class="rate-cell">{{ row.rate }}</td></tr>{% endfor %}</tbody>
                         </table>
                     </div>
                 </div>
             </div>
-            {% endif %}
+        </div>
+        {% endif %}
+
+        <div id="charts" class="section">
+            <div class="container">
+                <h2 class="section-title"><i class="fas fa-chart-line"></i> Графики курсов валют</h2>
+                <div class="card chart-card">
+                    <div class="chart-controls">
+                        <div class="form-group"><label class="form-label">Выберите валюту</label>
+                            <select id="currencySelect" class="currency-select">
+                                {% for c in currencies %}{% if c.code != 'RUB' %}<option value="{{ c.code }}">{{ c.sign }} {{ c.code }} — {{ c.name }}</option>{% endif %}{% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group"><label class="form-label">Период</label>
+                            <select id="periodSelect" class="currency-select">
+                                <option value="7">7 дней</option>
+                                <option value="30" selected>30 дней</option>
+                                <option value="90">90 дней</option>
+                                <option value="180">180 дней</option>
+                                <option value="365">365 дней</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="chart-container"><canvas id="rateChart"></canvas></div>
+                    <p id="chartMessage" style="text-align:center; color: var(--text-muted); display: none;">Нет данных для отображения</p>
+                </div>
+            </div>
         </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <p>&copy; 2026 CurrencyExchange · Практика · Лысодед В.В и Бадеев В.Р</p>
-        </div>
-    </footer>
+    <footer class="footer"><div class="container"><p>&copy; 2026 CurrencyExchange · Практика · Лысодед В.В и Бадеев В.Р</p></div></footer>
 
-    <!-- Скрипт для кнопки обмена валют -->
     <script>
+        // Swap
         document.getElementById('swapBtn').addEventListener('click', function() {
             const from = document.getElementById('fromCurrency');
             const to = document.getElementById('toCurrency');
-            const temp = from.value;
-            from.value = to.value;
-            to.value = temp;
+            [from.value, to.value] = [to.value, from.value];
         });
 
-        // Переключение темы
+        // Theme
         const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = themeToggle.querySelector('i');
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark');
+            themeIcon.className = 'fas fa-sun';
+        }
         themeToggle.addEventListener('click', () => {
             document.body.classList.toggle('dark');
-            const icon = themeToggle.querySelector('i');
             if (document.body.classList.contains('dark')) {
-                icon.className = 'fas fa-sun';
+                themeIcon.className = 'fas fa-sun';
+                localStorage.setItem('theme', 'dark');
             } else {
-                icon.className = 'fas fa-moon';
+                themeIcon.className = 'fas fa-moon';
+                localStorage.setItem('theme', 'light');
             }
         });
+
+        // Modal
+        const infoModal = document.getElementById('infoModal');
+        document.getElementById('infoBtn').addEventListener('click', () => infoModal.classList.add('active'));
+        document.getElementById('closeModal').addEventListener('click', () => infoModal.classList.remove('active'));
+        infoModal.addEventListener('click', (e) => { if (e.target === infoModal) infoModal.classList.remove('active'); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') infoModal.classList.remove('active'); });
+
+        // Active nav link update
+        const sections = document.querySelectorAll('.section');
+        const navLinks = document.querySelectorAll('.nav-link');
+        function updateActiveNav() {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop - 120;
+                if (window.pageYOffset >= sectionTop) {
+                    current = section.getAttribute('id');
+                }
+            });
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        }
+        window.addEventListener('scroll', updateActiveNav);
+        // При клике на навигационные ссылки сразу делаем активной, без ожидания скролла
+        navLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                const href = this.getAttribute('href');
+                if (href.startsWith('#')) {
+                    navLinks.forEach(l => l.classList.remove('active'));
+                    this.classList.add('active');
+                    // после анимации скролла ещё раз обновим на всякий случай
+                    setTimeout(updateActiveNav, 150);
+                }
+            });
+        });
+        updateActiveNav(); // начальная подсветка
+
+        // Chart
+        const currencySelect = document.getElementById('currencySelect');
+        const periodSelect = document.getElementById('periodSelect');
+        const chartCanvas = document.getElementById('rateChart').getContext('2d');
+        const chartMessage = document.getElementById('chartMessage');
+        let chart;
+
+        async function loadChart(currency, days = 30) {
+            try {
+                const response = await fetch(`/api/rate_history?currency=${currency}&days=${days}`);
+                const data = await response.json();
+                if (chart) chart.destroy();
+
+                if (!data || data.length === 0) {
+                    chartMessage.style.display = 'block';
+                    chart = new Chart(chartCanvas, {
+                        type: 'line',
+                        data: { labels: [], datasets: [] },
+                        options: { responsive: true, maintainAspectRatio: false,
+                            scales: { x: { display: false }, y: { display: false } } }
+                    });
+                    return;
+                }
+
+                chartMessage.style.display = 'none';
+                const labels = data.map(d => d.date);
+                const rates = data.map(d => d.rate);
+                const isDark = document.body.classList.contains('dark');
+
+                chart = new Chart(chartCanvas, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: `Курс ${currency} к RUB`,
+                            data: rates,
+                            borderColor: '#6366f1',
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            pointHoverRadius: 5,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { intersect: false, mode: 'index' },
+                        plugins: {
+                            legend: { labels: { color: isDark ? '#cbd5e1' : '#64748b' } },
+                            tooltip: { callbacks: { label: (ctx) => `1 ${currency} = ${ctx.raw.toFixed(4)} RUB` } }
+                        },
+                        scales: {
+                            x: { ticks: { color: isDark ? '#94a3b8' : '#64748b', maxTicksLimit: 8 },
+                                grid: { color: isDark ? '#334155' : '#e2e8f0' } },
+                            y: { ticks: { color: isDark ? '#94a3b8' : '#64748b' },
+                                grid: { color: isDark ? '#334155' : '#e2e8f0' } }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Ошибка загрузки данных для графика:', error);
+                chartMessage.textContent = 'Ошибка загрузки данных';
+                chartMessage.style.display = 'block';
+                if (chart) chart.destroy();
+                chart = new Chart(chartCanvas, {
+                    type: 'line',
+                    data: { labels: [], datasets: [] },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+        }
+
+        currencySelect.addEventListener('change', () => loadChart(currencySelect.value, periodSelect.value));
+        periodSelect.addEventListener('change', () => loadChart(currencySelect.value, periodSelect.value));
+
+        document.querySelectorAll('.history-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const currency = this.dataset.currency;
+                if (currency) {
+                    currencySelect.value = currency;
+                    document.getElementById('charts').scrollIntoView({ behavior: 'smooth' });
+                    loadChart(currency, periodSelect.value);
+                }
+            });
+        });
+
+        loadChart(currencySelect.value, periodSelect.value);
+
+        // Обновление цветов графика при смене темы
+        const observer = new MutationObserver(() => {
+            if (chart && chart.data.datasets.length > 0) {
+                const isDark = document.body.classList.contains('dark');
+                chart.options.scales.x.ticks.color = isDark ? '#94a3b8' : '#64748b';
+                chart.options.scales.x.grid.color = isDark ? '#334155' : '#e2e8f0';
+                chart.options.scales.y.ticks.color = isDark ? '#94a3b8' : '#64748b';
+                chart.options.scales.y.grid.color = isDark ? '#334155' : '#e2e8f0';
+                chart.options.plugins.legend.labels.color = isDark ? '#cbd5e1' : '#64748b';
+                chart.update();
+            }
+        });
+        observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     </script>
 </body>
 </html>
