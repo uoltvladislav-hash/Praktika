@@ -111,29 +111,31 @@ def _load_fallback_rates():
     conn.close()
 
 def generate_history_rates():
-    """Генерирует историю курсов (RUB за 1 единицу валюты) за 365 дней."""
+    """Генерирует историю курсов (RUB за 1 единицу валюты) за 365 дней, удаляя старые данные."""
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM rate_history")
-    if cur.fetchone()[0] > 0:
-        conn.close()
-        return
+    # Удаляем старые данные, чтобы график всегда строился заново и соответствовал текущему курсу
+    cur.execute("DELETE FROM rate_history")
+
     # Получаем текущие курсы: RUB -> валюта (сколько валюты за 1 RUB)
     cur.execute("SELECT target_code, rate FROM exchange_rates WHERE base_code = 'RUB'")
     current_rates = {row["target_code"]: row["rate"] for row in cur.fetchall()}
     if not current_rates:
-        current_rates = {"USD": 0.0109, "EUR": 0.0100, "GBP": 0.0085, "CNY": 0.079, "JPY": 1.64, "KZT": 5.00, "TRY": 0.35}
-    random.seed(42)
+        current_rates = {"USD": 0.0109, "EUR": 0.0100, "GBP": 0.0085,
+                         "CNY": 0.079, "JPY": 1.64, "KZT": 5.00, "TRY": 0.35}
+
+    random.seed(42)  # для воспроизводимости
     today = datetime.now().date()
     for days_ago in range(365, -1, -1):
         date = today - timedelta(days=days_ago)
         date_str = date.strftime("%Y-%m-%d")
         for code, rate_to_rub in current_rates.items():
+            # вариация ±2% относительно текущего курса
             variation = 1 + random.uniform(-0.02, 0.02)
-            historical_rate = rate_to_rub * variation  # все еще сколько валюты за 1 RUB
-            # Сохраняем именно курс валюты к RUB (переворачиваем для графика)
+            historical_rate = rate_to_rub * variation
+            # переводим в "сколько рублей за 1 единицу валюты"
             rub_per_unit = 1.0 / historical_rate
-            cur.execute("INSERT OR IGNORE INTO rate_history (currency_code, rate, date) VALUES (?, ?, ?)",
+            cur.execute("INSERT INTO rate_history (currency_code, rate, date) VALUES (?, ?, ?)",
                         (code, rub_per_unit, date_str))
     conn.commit()
     conn.close()
