@@ -139,6 +139,12 @@ body {
     color: var(--accent);
 }
 
+.header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
 .theme-toggle {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
@@ -180,6 +186,11 @@ body {
 .hero-description {
     font-size: 16px;
     color: var(--text-secondary);
+}
+
+/* ===== SECTIONS ===== */
+.section {
+    padding: 20px 0 40px;
 }
 
 /* ===== КАРТОЧКИ ===== */
@@ -353,14 +364,8 @@ body {
 }
 
 @keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .result-amount-main {
@@ -406,6 +411,29 @@ body {
     color: var(--text-muted);
 }
 
+.history-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 10px 20px;
+    background: var(--accent-light);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.history-link:hover {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
 /* ===== АЛЕРТЫ ===== */
 .alert {
     margin-top: 24px;
@@ -430,10 +458,6 @@ body {
 }
 
 /* ===== ИСТОРИЯ ===== */
-.history-section {
-    margin-top: 48px;
-}
-
 .section-title {
     font-size: 22px;
     font-weight: 700;
@@ -519,6 +543,34 @@ body {
     color: var(--text-muted);
     font-size: 13px;
     white-space: nowrap;
+}
+
+/* ===== ГРАФИКИ ===== */
+.chart-card {
+    padding: 32px;
+}
+
+.chart-controls {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.chart-controls .form-group {
+    min-width: 200px;
+}
+
+.chart-container {
+    position: relative;
+    height: 400px;
+    width: 100%;
+}
+
+@media (max-width: 640px) {
+    .chart-container {
+        height: 300px;
+    }
 }
 
 /* ===== FOOTER ===== */
